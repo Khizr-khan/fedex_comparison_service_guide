@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+chroma_fedex_db/
+chroma_fedex_db_2025/
+venv/
+.venv/
+Service Guide/
+*.xlsx
+*.csv
+eval_results.json
+eval_aggressive_results.json
+eval_aggressive2_results.json
