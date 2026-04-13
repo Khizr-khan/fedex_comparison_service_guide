@@ -10,7 +10,7 @@ token = os.environ.get('HF_TOKEN')
 
 print('Downloading 2026 DB...')
 snapshot_download(
-    repo_id='Khizr72/fedex-service-guide',
+    repo_id='Khizr72/fedex-service-guide-2026',
     repo_type='dataset',
     local_dir='./chroma_fedex_db',
     token=token,
