@@ -80,7 +80,7 @@ SURCHARGE_SIGNALS = [
     "third party billing", "inbound processing",
     "controlled export", "signature proof",
     "ahs", "additional handling",
-    "declared value", "declaration value",
+    "declared value", "declaration value","appointment"
 ]
 
 COMPARISON_SIGNALS = [
@@ -225,9 +225,10 @@ class FedExRAG:
     # ── Query classification ───────────────────────────────────────────────────
     def classify_query(self, question: str) -> str:
         q = question.lower()
-        # Comparison checked FIRST — may also contain rate signals
+        # Comparison checked FIRST — must contain BOTH a comparison signal AND a year reference
         if any(sig in q for sig in COMPARISON_SIGNALS):
-            return "comparison"
+            if "2025" in q or "2026" in q or "last year" in q or "previous year" in q:
+                return "comparison"
         if any(sig in q for sig in SURCHARGE_SIGNALS):
             return "surcharge"
         if any(sig in q for sig in OUT_OF_SCOPE_SIGNALS):
@@ -240,11 +241,11 @@ class FedExRAG:
         if sum(1 for s in rate_signals if s in q) >= 2:
             return "rate"
         return "general"
-
     # ── DB retrieval with 3-retry loop ────────────────────────────────────────
     def _db_get(self, where_filter, vectorstore=None):
         vs = vectorstore or self.vectorstore_2026
-        for attempt in range(3):
+        import time
+        for attempt in range(5):
             try:
                 raw = vs._collection.get(
                     where=where_filter,
@@ -256,6 +257,7 @@ class FedExRAG:
                         for d, m in zip(raw["documents"], raw["metadatas"])
                     ]
             except Exception:
+                time.sleep(0.3)
                 pass
         return []
 
