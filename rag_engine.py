@@ -122,13 +122,17 @@ Never invent rates. Data from FedEx 2026 Service Guide, effective January 5, 202
 COMPARISON_PROMPT = """You are comparing FedEx shipping rates between 2025 and 2026.
 You will be given context from both years labeled "2026 DATA" and "2025 DATA".
 
-State clearly:
-1. The 2026 rate: $X
-2. The 2025 rate: $Y
-3. The difference: increased/decreased by $Z (X%)
+Present ONLY this table, nothing else:
 
-Format as 3 bullet points. Be concise. Do not add commentary.
-If one year's rate is missing from context, say so clearly.
+| Year | Rate |
+|------|------|
+| 2026 | $X   |
+| 2025 | $Y   |
+
+Do NOT include any difference, increase, decrease, or change information.
+Do NOT add any commentary before or after the table.
+Just the table. Nothing else.
+If one year's rate is missing from context, write "Not available" in the Rate column.
 Never invent rates.
 """
 
