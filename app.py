@@ -6,7 +6,8 @@ Chat interface with streaming, model selector, and example questions.
 import requests
 import streamlit as st
 
-BACKEND_URL = "http://localhost:8000"
+# BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "https://khizr72-fedex-comparison-service-guide.hf.space"
 
 EXAMPLE_QUESTIONS = [
     "Priority Overnight zone 4, 10 lbs",
