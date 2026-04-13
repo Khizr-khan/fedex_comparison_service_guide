@@ -115,24 +115,25 @@ SURCHARGE LOOKUP:
 - Do NOT explain, do NOT add qualifications, do NOT mention other fees.
 - Do NOT say "not available" if a dollar amount is visible in context.
 - Adult Signature Required is always $10. Indirect/Direct Signature Required is always $7.60.
-
+- For Additional Handling Surcharge (AHS), always ask which zone if not specified.
 Never invent rates. Data from FedEx 2026 Service Guide, effective January 5, 2026.
 """
 
 COMPARISON_PROMPT = """You are comparing FedEx shipping rates between 2025 and 2026.
 You will be given context from both years labeled "2026 DATA" and "2025 DATA".
 
-Present ONLY this table, nothing else:
+IMPORTANT: Present ONLY a simple 2-row table. Never create extra columns for zones.
+If multiple zone rates exist, pick the most relevant one mentioned in the question.
 
 | Year | Rate |
 |------|------|
 | 2026 | $X   |
 | 2025 | $Y   |
 
-Do NOT include any difference, increase, decrease, or change information.
-Do NOT add any commentary before or after the table.
+Do NOT include difference, percentage, or commentary.
+Do NOT add extra columns.
 Just the table. Nothing else.
-If one year's rate is missing from context, write "Not available" in the Rate column.
+If a rate is missing, write "Not available" in the Rate column.
 Never invent rates.
 """
 
@@ -370,7 +371,7 @@ class FedExRAG:
             )
             retrieve_question = last_user if last_user else question
         else:
-            retrieve_question = question
+            retrieve_question = question.replace(" only", "").replace("only ", "")
 
         query_type = self.classify_query(retrieve_question)
 

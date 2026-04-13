@@ -330,6 +330,8 @@ SURCHARGE_CHUNKS = [
     "Northern Canada surcharge for Yukon, Northwest Territories, Nunavut, or Labrador: packages weighing 70 lbs or less is $105.00.",
     "Northern Canada surcharge for Yukon, Northwest Territories, Nunavut, or Labrador: packages weighing more than 70 lbs (if accepted) is $165.00.",
     "Yukon surcharge for packages 70 lbs or less is $105.00.",
+    "Yukon Northern Canada surcharge 2025 is $105.00 for packages 70 lbs or less.",
+    "Northern Canada Yukon 2025 surcharge is $105.00.",
     "Nunavut surcharge for packages 70 lbs or less is $105.00.",
     "Northwest Territories surcharge for packages 70 lbs or less is $105.00.",
     "Labrador surcharge for packages 70 lbs or less is $105.00.",
