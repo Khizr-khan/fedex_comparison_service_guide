@@ -261,10 +261,12 @@ class FedExRAG:
         if any(sig in q for sig in OUT_OF_SCOPE_SIGNALS):
             return "out_of_scope"
         rate_signals = [
-            "rate", "price", "cost", "how much", "zone", "lbs", "lb",
-            "pound", "weight", "overnight", "2day", "ground", "express",
-            "priority", "saver", "economy", "freight", "shipping",
-        ]
+        "rate", "price", "cost", "how much", "zone", "lbs", "lb",
+        "pound", "weight", "overnight", "2day", "ground", "express",
+        "priority", "saver", "economy", "freight", "shipping",
+        "one rate", "f1r", "pak", "envelope", "small box", "medium box",
+        "large box", "tube",
+            ]
         if sum(1 for s in rate_signals if s in q) >= 2:
             return "rate"
         return "general"
@@ -319,7 +321,10 @@ class FedExRAG:
                 )
 
                 # Build filter
-                filters = [{"service": {"$eq": "FedEx One Rate®"}}]
+                filters = [
+                        {"service": {"$eq": "FedEx One Rate®"}},
+                        {"type": {"$eq": "one_rate"}},
+                    ]
                 if or_zone:
                     filters.append({"zone": {"$eq": or_zone}})
                 if pkg_type:
@@ -333,7 +338,10 @@ class FedExRAG:
                     return docs[:5]
                 # Fallback to similarity search for One Rate
                 return vs.similarity_search(question, k=top_k * 2,
-                    filter={"service": {"$eq": "FedEx One Rate®"}})
+                    filter={"$and": [
+                        {"service": {"$eq": "FedEx One Rate®"}},
+                        {"type": {"$eq": "one_rate"}},
+                    ]})
 
             zone = self._detect_zone(question)
             weight = self._detect_weight(question)
