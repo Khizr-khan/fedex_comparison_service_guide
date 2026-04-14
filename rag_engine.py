@@ -53,7 +53,7 @@ SERVICE_KEYWORDS = {
     " so ":                           "FedEx Standard Overnight®",
     "one rate":                       "FedEx One Rate®",
     "onerate":                        "FedEx One Rate®",
-    "F1R"
+    "F1R":                              "FedEx One Rate®",
 }
 
 SURCHARGE_SIGNALS = [
