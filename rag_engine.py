@@ -51,6 +51,9 @@ SERVICE_KEYWORDS = {
     " po ":                           "FedEx Priority Overnight®",
     " fo ":                           "FedEx First Overnight®",
     " so ":                           "FedEx Standard Overnight®",
+    "one rate":                       "FedEx One Rate®",
+    "onerate":                        "FedEx One Rate®",
+    "F1R"
 }
 
 SURCHARGE_SIGNALS = [
