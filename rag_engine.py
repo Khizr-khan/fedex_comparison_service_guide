@@ -181,6 +181,9 @@ class FedExRAG:
     # ── Detectors ─────────────────────────────────────────────────────────────
     def _detect_service(self, question: str):
         padded = " " + question.lower() + " "
+        # One Rate must be checked first — it overrides all other service detection
+        if "one rate" in padded or "onerate" in padded or " f1r " in padded:
+            return "FedEx One Rate®"
         for keyword in sorted(SERVICE_KEYWORDS.keys(), key=len, reverse=True):
             if keyword in padded:
                 return SERVICE_KEYWORDS[keyword]
