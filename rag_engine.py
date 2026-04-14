@@ -39,6 +39,9 @@ SERVICE_KEYWORDS = {
     "international connect":          "FedEx® International Connect Plus",
     "intl connect":                   "FedEx® International Connect Plus",
     "connect plus":                   "FedEx® International Connect Plus",
+    "one rate":                       "FedEx One Rate®",
+    "onerate":                        "FedEx One Rate®",
+    " f1r ":                          "FedEx One Rate®",
     "priority overnight":             "FedEx Priority Overnight®",
     "first overnight":                "FedEx First Overnight®",
     "standard overnight":             "FedEx Standard Overnight®",
@@ -51,9 +54,6 @@ SERVICE_KEYWORDS = {
     " po ":                           "FedEx Priority Overnight®",
     " fo ":                           "FedEx First Overnight®",
     " so ":                           "FedEx Standard Overnight®",
-    "one rate":                       "FedEx One Rate®",
-    "onerate":                        "FedEx One Rate®",
-    "F1R":                              "FedEx One Rate®",
 }
 
 SURCHARGE_SIGNALS = [
@@ -83,7 +83,7 @@ SURCHARGE_SIGNALS = [
     "third party billing", "inbound processing",
     "controlled export", "signature proof",
     "ahs", "additional handling",
-    "declared value", "declaration value","appointment"
+    "declared value", "declaration value",
 ]
 
 COMPARISON_SIGNALS = [
@@ -118,25 +118,20 @@ SURCHARGE LOOKUP:
 - Do NOT explain, do NOT add qualifications, do NOT mention other fees.
 - Do NOT say "not available" if a dollar amount is visible in context.
 - Adult Signature Required is always $10. Indirect/Direct Signature Required is always $7.60.
-- For Additional Handling Surcharge (AHS), always ask which zone if not specified.
+
 Never invent rates. Data from FedEx 2026 Service Guide, effective January 5, 2026.
 """
 
 COMPARISON_PROMPT = """You are comparing FedEx shipping rates between 2025 and 2026.
 You will be given context from both years labeled "2026 DATA" and "2025 DATA".
 
-IMPORTANT: Present ONLY a simple 2-row table. Never create extra columns for zones.
-If multiple zone rates exist, pick the most relevant one mentioned in the question.
+State clearly:
+1. The 2026 rate: $X
+2. The 2025 rate: $Y
+3. The difference: increased/decreased by $Z (X%)
 
-| Year | Rate |
-|------|------|
-| 2026 | $X   |
-| 2025 | $Y   |
-
-Do NOT include difference, percentage, or commentary.
-Do NOT add extra columns.
-Just the table. Nothing else.
-If a rate is missing, write "Not available" in the Rate column.
+Format as 3 bullet points. Be concise. Do not add commentary.
+If one year's rate is missing from context, say so clearly.
 Never invent rates.
 """
 
@@ -225,13 +220,42 @@ class FedExRAG:
         m = re.search(r"(\d+)\s*(?:lb|lbs|pound)", question.lower())
         return m.group(1) if m else None
 
+    def _detect_one_rate_zone(self, question: str):
+        """Detect One Rate zone tier from question."""
+        q = question.lower()
+        if any(x in q for x in ["zone 2", "local", "zone2"]):
+            return "Local Zone 2"
+        if any(x in q for x in ["zone 3", "zone 4", "zones 3", "zones 4", "regional", "zone3", "zone4"]):
+            return "Regional Zones 3-4"
+        if any(x in q for x in ["zone 5", "zone 6", "zone 7", "zone 8", "zones 5", "national"]):
+            return "National Zones 5-8"
+        return None
+
+    def _detect_package_type(self, question: str):
+        """Detect FedEx One Rate package type from question."""
+        q = question.lower()
+        if "extra large" in q or "xl box" in q or "extra-large" in q:
+            return "FedEx Extra Large Box"
+        if "large box" in q or "large" in q and "box" in q:
+            return "FedEx Large Box"
+        if "medium box" in q or "medium" in q and "box" in q:
+            return "FedEx Medium Box"
+        if "small box" in q or "small" in q and "box" in q:
+            return "FedEx Small Box"
+        if "tube" in q:
+            return "FedEx Tube"
+        if "pak" in q:
+            return "FedEx Pak"
+        if "envelope" in q:
+            return "FedEx Envelope"
+        return None
+
     # ── Query classification ───────────────────────────────────────────────────
     def classify_query(self, question: str) -> str:
         q = question.lower()
-        # Comparison checked FIRST — must contain BOTH a comparison signal AND a year reference
+        # Comparison checked FIRST — may also contain rate signals
         if any(sig in q for sig in COMPARISON_SIGNALS):
-            if "2025" in q or "2026" in q or "last year" in q or "previous year" in q:
-                return "comparison"
+            return "comparison"
         if any(sig in q for sig in SURCHARGE_SIGNALS):
             return "surcharge"
         if any(sig in q for sig in OUT_OF_SCOPE_SIGNALS):
@@ -244,11 +268,11 @@ class FedExRAG:
         if sum(1 for s in rate_signals if s in q) >= 2:
             return "rate"
         return "general"
+
     # ── DB retrieval with 3-retry loop ────────────────────────────────────────
     def _db_get(self, where_filter, vectorstore=None):
         vs = vectorstore or self.vectorstore_2026
-        import time
-        for attempt in range(7):
+        for attempt in range(3):
             try:
                 raw = vs._collection.get(
                     where=where_filter,
@@ -260,7 +284,6 @@ class FedExRAG:
                         for d, m in zip(raw["documents"], raw["metadatas"])
                     ]
             except Exception:
-                time.sleep(0.5)
                 pass
         return []
 
@@ -283,6 +306,35 @@ class FedExRAG:
 
         if query_type in ("rate", "general", "comparison"):
             service = self._detect_service(question)
+
+            # ── One Rate special handling ──────────────────────────────────────
+            if service == "FedEx One Rate®":
+                or_zone = self._detect_one_rate_zone(question)
+                pkg_type = self._detect_package_type(question)
+                underlying = self._detect_service(
+                    question.lower()
+                    .replace("one rate", "")
+                    .replace("onerate", "")
+                    .replace("f1r", "")
+                )
+
+                # Build filter
+                filters = [{"service": {"$eq": "FedEx One Rate®"}}]
+                if or_zone:
+                    filters.append({"zone": {"$eq": or_zone}})
+                if pkg_type:
+                    filters.append({"package_type": {"$eq": pkg_type}})
+                if underlying:
+                    filters.append({"underlying_service": {"$eq": underlying}})
+
+                where = {"$and": filters} if len(filters) > 1 else filters[0]
+                docs = self._db_get(where, vs)
+                if docs:
+                    return docs[:5]
+                # Fallback to similarity search for One Rate
+                return vs.similarity_search(question, k=top_k * 2,
+                    filter={"service": {"$eq": "FedEx One Rate®"}})
+
             zone = self._detect_zone(question)
             weight = self._detect_weight(question)
 
@@ -349,8 +401,8 @@ class FedExRAG:
         else:
             underlying_type = "rate"
 
-        docs_2026 = self.retrieve(question, underlying_type, top_k=8, vectorstore=self.vectorstore_2026)
-        docs_2025 = self.retrieve(question, underlying_type, top_k=8, vectorstore=self.vectorstore_2025)
+        docs_2026 = self.retrieve(question, underlying_type, vectorstore=self.vectorstore_2026)
+        docs_2025 = self.retrieve(question, underlying_type, vectorstore=self.vectorstore_2025)
         return docs_2026, docs_2025
 
     # ── Token stats helpers ───────────────────────────────────────────────────
@@ -376,7 +428,7 @@ class FedExRAG:
             )
             retrieve_question = last_user if last_user else question
         else:
-            retrieve_question = question.replace(" only", "").replace("only ", "")
+            retrieve_question = question
 
         query_type = self.classify_query(retrieve_question)
 
@@ -391,8 +443,8 @@ class FedExRAG:
 
         if query_type == "comparison":
             docs_2026, docs_2025 = self.retrieve_comparison(retrieve_question)
-            context_2026 = "\n".join([d.page_content for d in docs_2026[:5]])
-            context_2025 = "\n".join([d.page_content for d in docs_2025[:5]])
+            context_2026 = "\n".join([d.page_content for d in docs_2026[:3]])
+            context_2025 = "\n".join([d.page_content for d in docs_2025[:3]])
             context = f"2026 DATA:\n{context_2026}\n\n2025 DATA:\n{context_2025}"
             system = COMPARISON_PROMPT
         else:
