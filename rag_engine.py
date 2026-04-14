@@ -245,7 +245,7 @@ class FedExRAG:
     def _db_get(self, where_filter, vectorstore=None):
         vs = vectorstore or self.vectorstore_2026
         import time
-        for attempt in range(5):
+        for attempt in range(7):
             try:
                 raw = vs._collection.get(
                     where=where_filter,
@@ -257,7 +257,7 @@ class FedExRAG:
                         for d, m in zip(raw["documents"], raw["metadatas"])
                     ]
             except Exception:
-                time.sleep(0.3)
+                time.sleep(0.5)
                 pass
         return []
 
